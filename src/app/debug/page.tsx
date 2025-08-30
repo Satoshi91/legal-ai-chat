@@ -9,9 +9,7 @@ export default function DebugPage() {
   const [error, setError] = useState<string | null>(null);
 
   // useChatフックのテスト
-  const debugChatHook = useChat({
-    api: '/api/chat',
-  });
+  const debugChatHook = useChat();
 
   const [chatDebugInfo, setChatDebugInfo] = useState<Record<string, unknown> | null>(null);
   const [messageFlowDebug, setMessageFlowDebug] = useState<Record<string, unknown> | null>(null);
@@ -139,39 +137,17 @@ export default function DebugPage() {
         id: debugChatHook.id,
         messages: debugChatHook.messages,
         messagesLength: debugChatHook.messages.length,
-        status: debugChatHook.status,
         error: debugChatHook.error,
         availableMethods: Object.keys(debugChatHook),
-        sendMessageType: typeof debugChatHook.sendMessage,
       };
 
       console.log('useChat hook state:', hookState);
 
-      // テストメッセージを送信
-      console.log('Sending test message...');
-      await debugChatHook.sendMessage({
-        role: 'user',
-        content: 'デバッグテストメッセージです',
+      setChatDebugInfo({
+        hookState,
+        timestamp: new Date().toISOString(),
+        note: 'sendMessage method not available in current AI SDK version'
       });
-
-      // 送信後の状態を記録
-      setTimeout(() => {
-        const postSendState = {
-          id: debugChatHook.id,
-          messages: debugChatHook.messages,
-          messagesLength: debugChatHook.messages.length,
-          status: debugChatHook.status,
-          error: debugChatHook.error,
-        };
-
-        setChatDebugInfo({
-          beforeSend: hookState,
-          afterSend: postSendState,
-          timestamp: new Date().toISOString(),
-        });
-
-        console.log('Post-send hook state:', postSendState);
-      }, 2000);
 
     } catch (error) {
       console.error('useChat test error:', error);
@@ -184,16 +160,14 @@ export default function DebugPage() {
       id: debugChatHook.id,
       messages: debugChatHook.messages,
       messagesLength: debugChatHook.messages.length,
-      status: debugChatHook.status,
       error: debugChatHook.error,
       availableMethods: Object.keys(debugChatHook),
-      sendMessageType: typeof debugChatHook.sendMessage,
       messagesDetailed: debugChatHook.messages.map((msg, index) => ({
         index,
         id: msg.id,
         role: msg.role,
-        content: msg.content,
-        contentLength: msg.content?.length || 0,
+        messageObject: JSON.stringify(msg),
+        availableProperties: Object.keys(msg),
       })),
       timestamp: new Date().toISOString(),
     };
@@ -598,42 +572,42 @@ export default function DebugPage() {
                 <p className={`text-sm ${messageFlowDebug.success ? 'text-green-600' : 'text-red-600'}`}>
                   ステータス: {messageFlowDebug.success ? '成功' : '失敗'}
                 </p>
-                {messageFlowDebug.totalTime && (
+                {messageFlowDebug.totalTime ? (
                   <p className="text-sm text-gray-600">
-                    総実行時間: {messageFlowDebug.totalTime}ms
+                    総実行時間: {String(messageFlowDebug.totalTime)}ms
                   </p>
-                )}
+                ) : null}
               </div>
               
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
                 <h3 className="font-semibold mb-2">ステップ別ログ</h3>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {messageFlowDebug.debugLog?.map((log: Record<string, unknown>, index: number) => (
+                  {Array.isArray(messageFlowDebug.debugLog) && messageFlowDebug.debugLog.map((log: Record<string, unknown>, index: number) => (
                     <div key={index} className={`p-2 rounded text-xs ${
                       log.error ? 'bg-red-100 text-red-800' : 'bg-white text-gray-700'
                     }`}>
                       <div className="font-mono">
-                        Step {log.step}: {log.action} ({log.elapsed}ms)
+                        Step {String(log.step)}: {String(log.action)} ({String(log.elapsed)}ms)
                       </div>
-                      {log.error && <div className="text-red-600 mt-1">{log.error}</div>}
-                      {log.data && (
+                      {log.error ? <div className="text-red-600 mt-1">{String(log.error)}</div> : null}
+                      {log.data ? (
                         <div className="mt-1 text-gray-600">
                           {JSON.stringify(log.data, null, 1)}
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {messageFlowDebug.fullResponse && (
+              {messageFlowDebug.fullResponse ? (
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
                   <h3 className="font-semibold mb-2">レスポンス内容（最初の1000文字）</h3>
                   <pre className="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap overflow-auto max-h-32">
-                    {messageFlowDebug.fullResponse}
+                    {String(messageFlowDebug.fullResponse)}
                   </pre>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         )}
@@ -649,44 +623,44 @@ export default function DebugPage() {
                 <p className={`text-sm ${openrouterTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
                   ステータス: {openrouterTestResult.success ? '成功' : '失敗'}
                 </p>
-                {openrouterTestResult.totalTime && (
+                {openrouterTestResult.totalTime ? (
                   <p className="text-sm text-gray-600">
-                    総実行時間: {openrouterTestResult.totalTime}ms
+                    総実行時間: {String(openrouterTestResult.totalTime)}ms
                   </p>
-                )}
+                ) : null}
               </div>
               
               <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
                 <h3 className="font-semibold mb-2">ステップ別ログ</h3>
                 <div className="space-y-2 max-h-64 overflow-y-auto">
-                  {openrouterTestResult.debugLog?.map((log: Record<string, unknown>, index: number) => (
+                  {Array.isArray(openrouterTestResult.debugLog) && openrouterTestResult.debugLog.map((log: Record<string, unknown>, index: number) => (
                     <div key={index} className={`p-2 rounded text-xs ${
                       log.error ? 'bg-red-100 text-red-800' : 'bg-white text-gray-700'
                     }`}>
                       <div className="font-mono">
-                        Step {log.step}: {log.action} ({log.elapsed}ms)
+                        Step {String(log.step)}: {String(log.action)} ({String(log.elapsed)}ms)
                       </div>
-                      {log.error && <div className="text-red-600 mt-1">{log.error}</div>}
-                      {log.data && (
+                      {log.error ? <div className="text-red-600 mt-1">{String(log.error)}</div> : null}
+                      {log.data ? (
                         <div className="mt-1 text-gray-600">
                           <pre className="text-xs overflow-x-auto">
                             {JSON.stringify(log.data, null, 2)}
                           </pre>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   ))}
                 </div>
               </div>
 
-              {openrouterTestResult.responseData && (
+              {openrouterTestResult.responseData ? (
                 <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
                   <h3 className="font-semibold mb-2">OpenRouter レスポンス</h3>
                   <pre className="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap overflow-auto max-h-64">
                     {JSON.stringify(openrouterTestResult.responseData, null, 2)}
                   </pre>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         )}

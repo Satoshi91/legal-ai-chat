@@ -37,7 +37,6 @@ export async function GET() {
         model: openrouter('anthropic/claude-3.5-sonnet'),
         messages: [{ role: 'user', content: 'test' }],
         temperature: 0.3,
-        maxTokens: 10,
       });
 
       debugInfo.streamTextTest = {
@@ -45,10 +44,10 @@ export async function GET() {
         resultConstructor: result.constructor.name,
         availableMethods: Object.getOwnPropertyNames(Object.getPrototypeOf(result)),
         resultKeys: Object.keys(result),
-        hasToResponse: typeof result.toResponse === 'function',
-        hasToDataStreamResponse: typeof result.toDataStreamResponse === 'function',
-        hasToTextStream: typeof result.toTextStream === 'function',
-        hasToAIStream: typeof result.toAIStream === 'function',
+        hasResponse: 'response' in result && typeof result.response === 'function',
+        hasToDataStreamResponse: 'toDataStreamResponse' in result,
+        hasToTextStream: 'toTextStream' in result,
+        hasToAIStream: 'toAIStream' in result,
       };
 
     } catch (error) {
