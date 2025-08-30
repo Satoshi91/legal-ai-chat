@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Send, Trash2 } from 'lucide-react';
-import { LoadingIcon } from './LoadingIcon';
 
 interface ChatInputProps {
   onSendMessage: (message: string) => void;

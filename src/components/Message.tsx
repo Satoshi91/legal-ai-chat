@@ -8,7 +8,7 @@ export interface MessageProps {
   timestamp: Date;
 }
 
-export function Message({ content, role, timestamp }: MessageProps) {
+export function Message({ content, role }: MessageProps) {
   const isUser = role === 'user';
   const isSystem = role === 'system';
   const [copied, setCopied] = useState(false);

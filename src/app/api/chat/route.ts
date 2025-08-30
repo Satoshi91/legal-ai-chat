@@ -1,4 +1,3 @@
-import { streamText } from 'ai';
 import { createOpenAI } from '@ai-sdk/openai';
 
 const openrouter = createOpenAI({
@@ -130,7 +129,7 @@ export async function POST(req: Request) {
                     console.log('Streaming content:', content);
                     controller.enqueue(encoder.encode(content));
                   }
-                } catch (parseError) {
+                } catch {
                   // JSONパースエラーは無視（空行など）
                 }
               }

@@ -28,7 +28,7 @@ export default function Home() {
       if (savedMessages) {
         const parsedMessages = JSON.parse(savedMessages);
         // timestampをDateオブジェクトに変換
-        const messagesWithDates = parsedMessages.map((msg: any) => ({
+        const messagesWithDates = parsedMessages.map((msg: MessageProps) => ({
           ...msg,
           timestamp: new Date(msg.timestamp)
         }));
