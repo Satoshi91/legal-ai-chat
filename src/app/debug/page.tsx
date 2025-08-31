@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useChat } from '@ai-sdk/react';
+import { LegalChatRequest, LegalChatResponse, LegalChatError } from '@/types/legal-chat';
 
 export default function DebugPage() {
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
@@ -14,6 +15,7 @@ export default function DebugPage() {
   const [chatDebugInfo, setChatDebugInfo] = useState<Record<string, unknown> | null>(null);
   const [messageFlowDebug, setMessageFlowDebug] = useState<Record<string, unknown> | null>(null);
   const [openrouterTestResult, setOpenrouterTestResult] = useState<Record<string, unknown> | null>(null);
+  const [railwayTestResult, setRailwayTestResult] = useState<Record<string, unknown> | null>(null);
 
   const testApiEndpoint = async () => {
     setLoading(true);
@@ -23,13 +25,14 @@ export default function DebugPage() {
     try {
       console.log('Testing API endpoint...');
       
-      const testMessage = {
+      const testMessage: LegalChatRequest = {
         messages: [
           {
             role: 'user',
-            content: 'テストメッセージです'
+            content: '労働基準法について教えてください'
           }
-        ]
+        ],
+        max_context_docs: 10
       };
 
       console.log('Sending request:', testMessage);
@@ -74,7 +77,7 @@ export default function DebugPage() {
           headers: Object.fromEntries(response.headers.entries())
         });
       } else {
-        const data = await response.json();
+        const data: LegalChatResponse | LegalChatError = await response.json();
         console.log('Response data:', data);
         
         setResult({
@@ -463,6 +466,118 @@ export default function DebugPage() {
     }
   };
 
+  const testRailwayConnection = async () => {
+    setLoading(true);
+    setError(null);
+    setRailwayTestResult(null);
+
+    const debugLog: Record<string, unknown>[] = [];
+    const startTime = Date.now();
+
+    try {
+      debugLog.push({
+        step: 1,
+        action: 'Starting Railway backend connection test',
+        timestamp: new Date().toISOString(),
+        elapsed: 0
+      });
+
+      const testMessage = 'Railway接続テスト用のメッセージです';
+      
+      debugLog.push({
+        step: 2,
+        action: 'Preparing test request',
+        data: {
+          message: testMessage,
+          endpoint: '/api/chat'
+        },
+        timestamp: new Date().toISOString(),
+        elapsed: Date.now() - startTime
+      });
+
+      // 修正後のチャットAPIを呼び出し
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'user', content: testMessage }
+          ]
+        }),
+      });
+
+      debugLog.push({
+        step: 3,
+        action: 'Received response from chat API',
+        data: {
+          status: response.status,
+          statusText: response.statusText,
+          headers: Object.fromEntries(response.headers.entries()),
+          ok: response.ok
+        },
+        timestamp: new Date().toISOString(),
+        elapsed: Date.now() - startTime
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        debugLog.push({
+          step: 4,
+          action: 'Response error',
+          error: `HTTP ${response.status}: ${errorText}`,
+          timestamp: new Date().toISOString(),
+          elapsed: Date.now() - startTime
+        });
+        throw new Error(`HTTP ${response.status}: ${errorText}`);
+      }
+
+      const responseData = await response.json();
+
+      debugLog.push({
+        step: 4,
+        action: 'Successfully received JSON response',
+        data: {
+          responseType: typeof responseData,
+          hasContent: !!responseData.content,
+          hasMessage: !!responseData.message,
+          responseKeys: Object.keys(responseData),
+          responsePreview: JSON.stringify(responseData).substring(0, 200)
+        },
+        timestamp: new Date().toISOString(),
+        elapsed: Date.now() - startTime
+      });
+
+      setRailwayTestResult({
+        success: true,
+        debugLog,
+        responseData: responseData,
+        totalTime: Date.now() - startTime
+      });
+
+    } catch (error) {
+      debugLog.push({
+        step: 'ERROR',
+        action: 'Railway connection test failed',
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : 'No stack trace',
+        timestamp: new Date().toISOString(),
+        elapsed: Date.now() - startTime
+      });
+
+      console.error('Railway connection test error:', error);
+      setError(`Railway connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setRailwayTestResult({
+        success: false,
+        debugLog,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-8">
       <div className="max-w-4xl mx-auto">
@@ -521,6 +636,14 @@ export default function DebugPage() {
             className="px-6 py-3 bg-pink-500 hover:bg-pink-600 disabled:bg-gray-400 text-white rounded-lg font-medium ml-4"
           >
             {loading ? 'テスト中...' : 'OpenRouter 直接テスト'}
+          </button>
+
+          <button
+            onClick={testRailwayConnection}
+            disabled={loading}
+            className="px-6 py-3 bg-teal-500 hover:bg-teal-600 disabled:bg-gray-400 text-white rounded-lg font-medium ml-4"
+          >
+            {loading ? 'テスト中...' : 'Railway 接続テスト'}
           </button>
         </div>
 
@@ -658,6 +781,59 @@ export default function DebugPage() {
                   <h3 className="font-semibold mb-2">OpenRouter レスポンス</h3>
                   <pre className="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap overflow-auto max-h-64">
                     {JSON.stringify(openrouterTestResult.responseData, null, 2)}
+                  </pre>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+
+        {railwayTestResult && (
+          <div className="bg-teal-50 dark:bg-teal-900 border border-teal-200 dark:border-teal-700 rounded-lg p-6">
+            <h2 className="text-xl font-semibold text-teal-900 dark:text-teal-100 mb-4">
+              Railway 接続テスト結果
+            </h2>
+            <div className="space-y-4">
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                <h3 className="font-semibold mb-2">概要</h3>
+                <p className={`text-sm ${railwayTestResult.success ? 'text-green-600' : 'text-red-600'}`}>
+                  ステータス: {railwayTestResult.success ? '成功' : '失敗'}
+                </p>
+                {railwayTestResult.totalTime ? (
+                  <p className="text-sm text-gray-600">
+                    総実行時間: {String(railwayTestResult.totalTime)}ms
+                  </p>
+                ) : null}
+              </div>
+              
+              <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                <h3 className="font-semibold mb-2">ステップ別ログ</h3>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {Array.isArray(railwayTestResult.debugLog) && railwayTestResult.debugLog.map((log: Record<string, unknown>, index: number) => (
+                    <div key={index} className={`p-2 rounded text-xs ${
+                      log.error ? 'bg-red-100 text-red-800' : 'bg-white text-gray-700'
+                    }`}>
+                      <div className="font-mono">
+                        Step {String(log.step)}: {String(log.action)} ({String(log.elapsed)}ms)
+                      </div>
+                      {log.error ? <div className="text-red-600 mt-1">{String(log.error)}</div> : null}
+                      {log.data ? (
+                        <div className="mt-1 text-gray-600">
+                          <pre className="text-xs overflow-x-auto">
+                            {JSON.stringify(log.data, null, 2)}
+                          </pre>
+                        </div>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {railwayTestResult.responseData ? (
+                <div className="bg-gray-50 dark:bg-gray-900 rounded-lg p-4">
+                  <h3 className="font-semibold mb-2">Railway バックエンドレスポンス</h3>
+                  <pre className="text-xs text-gray-800 dark:text-gray-200 whitespace-pre-wrap overflow-auto max-h-64">
+                    {JSON.stringify(railwayTestResult.responseData, null, 2)}
                   </pre>
                 </div>
               ) : null}
